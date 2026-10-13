@@ -1,7 +1,140 @@
-﻿@page "/"
+@page "/"
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Class Gradebook</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Class Gradebook</h1>
+<p class="text-muted small">Demo data - it resets when the app restarts.</p>
 
-Welcome to your new app.
+@* The form for adding a new student *@
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <input class="form-control" placeholder="Name" @bind="name" />
+    </div>
+    <div class="col-md-2">
+        <input class="form-control" type="number" placeholder="Homework" @bind="homework" />
+    </div>
+    <div class="col-md-2">
+        <input class="form-control" type="number" placeholder="Midterm" @bind="midterm" />
+    </div>
+    <div class="col-md-2">
+        <input class="form-control" type="number" placeholder="Final" @bind="final" />
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-primary" @onclick="AddStudent">Add student</button>
+    </div>
+</div>
+
+@* Only shown when something is wrong *@
+@if (error != "")
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@* The list of students *@
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Homework</th>
+            <th>Midterm</th>
+            <th>Final</th>
+            <th>Average</th>
+            <th>Letter</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var student in students)
+        {
+            double average = GradeCalculator.Average(student.Homework, student.Midterm, student.Final);
+            <tr>
+                <td>@student.Name</td>
+                <td>@student.Homework</td>
+                <td>@student.Midterm</td>
+                <td>@student.Final</td>
+                <td>@average.ToString("0.0")</td>
+                <td>@GradeCalculator.Letter(average)</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteStudent(student.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    // The values typed into the form
+    private string name = "";
+    private int homework;
+    private int midterm;
+    private int final;
+
+    // The error message ("" means no error)
+    private string error = "";
+
+    // All students shown in the table
+    private List<Student> students = new();
+
+    // Runs when the page opens
+    protected override void OnInitialized()
+    {
+        LoadStudents();
+    }
+
+    // Reads all students from the database, ordered by name
+    private void LoadStudents()
+    {
+        using var db = new GradebookDb();
+        students = db.Students.OrderBy(s => s.Name).ToList();
+    }
+
+    // Checks the form, then saves the new student
+    private void AddStudent()
+    {
+        if (name.Trim() == "")
+        {
+            error = "Please enter a name.";
+            return;
+        }
+
+        if (!GradeCalculator.IsValidScore(homework) ||
+            !GradeCalculator.IsValidScore(midterm) ||
+            !GradeCalculator.IsValidScore(final))
+        {
+            error = "Each score must be between 0 and 100.";
+            return;
+        }
+
+        using var db = new GradebookDb();
+        db.Students.Add(new Student
+        {
+            Name = name.Trim(),
+            Homework = homework,
+            Midterm = midterm,
+            Final = final
+        });
+        db.SaveChanges();
+
+        // Clear the form and refresh the table
+        name = "";
+        homework = 0;
+        midterm = 0;
+        final = 0;
+        error = "";
+        LoadStudents();
+    }
+
+    // Removes one student from the database
+    private void DeleteStudent(int id)
+    {
+        using var db = new GradebookDb();
+        var student = db.Students.Find(id);
+        if (student != null)
+        {
+            db.Students.Remove(student);
+            db.SaveChanges();
+        }
+        LoadStudents();
+    }
+}
