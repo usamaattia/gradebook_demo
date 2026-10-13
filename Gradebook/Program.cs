@@ -1,3 +1,4 @@
+using Gradebook;
 using Gradebook.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,4 +25,5 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+GradebookDb.Setup();
 app.Run();
