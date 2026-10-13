@@ -1,0 +1,9 @@
+# Build output - Docker builds its own
+**/bin
+**/obj
+
+# Git history is not needed inside the image
+.git
+
+# Never copy a local database into the image
+**/*.db
